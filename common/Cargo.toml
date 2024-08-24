@@ -1,0 +1,16 @@
+[package]
+name = "common"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = {workspace = true }
+tonic = {workspace = true }
+pin-project-lite = {workspace = true }
+futures-core = {workspace = true }
+futures-sink = {workspace = true }
+async-trait = {workspace = true }
+thread_local = {workspace = true }
+tower = {workspace = true }
+futures = {workspace = true }
+once_cell = {workspace = true }

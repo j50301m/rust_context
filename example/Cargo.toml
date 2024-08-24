@@ -1,0 +1,21 @@
+[package]
+name = "example"
+version = "0.1.0"
+edition = "2021"
+
+members = [ "api" ,"migration"]
+
+[dependencies]
+kgs-err = {workspace = true}
+kgs-tracing = {workspace = true}
+database-manager = {workspace = true}
+
+tokio = {workspace = true}
+tonic = {workspace = true}
+common = { workspace = true }
+
+api = { path = "./api" }
+migration = { path = "./migration" }
+
+sea-orm = {version = "1.0.0", features = ["mock"] } # for database
+
