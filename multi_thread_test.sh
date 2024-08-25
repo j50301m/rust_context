@@ -2,12 +2,12 @@
 
 # Set your gRPC service details
 PROTO_FILE="./example/api/protos/test.proto"
-SERVICE_METHOD="test.TestService.TestMethod"
+SERVICE_METHOD="test.TestService.SaveMsg"
 SERVICE_ADDRESS="localhost:12345"
 
 # Set test parameters
 TOTAL_REQUESTS=1000
-CONCURRENCY=50
+CONCURRENCY=20
 
 # Create a temporary file for the data template
 TEMP_FILE=$(mktemp)
@@ -15,8 +15,8 @@ TEMP_FILE=$(mktemp)
 # Write the data template to the temporary file
 cat << EOF > $TEMP_FILE
 [
-  {"test": "multi_thread_test_1"},
-  {"test": "multi_thread_test_2"}
+  {"msg": "multi_thread_test_1"},
+  {"msg": "multi_thread_test_2"}
 ]
 EOF
 

@@ -15,7 +15,7 @@ kgs-tracing = { git = "http://gitlab.kgs.asia/rust_lib/kgs-tracing.git", branch 
 kgs-err = { git = "http://gitlab.kgs.asia/rust_lib/kgs-err.git", branch = "feature/payment_rollover" }
 database-manager = { git = "http://gitlab.kgs.asia/rust_lib/database-manager.git", branch = "master" }
 tokio = { version = "1.39.3", features = ["rt-multi-thread", "macros"] }
-tonic = "0.12.1"
+tonic = "0.11.0"
 pretty_assertions = "1.4.0"
 pin-project-lite = "0.2.11"
 futures-core = "0.3.30"

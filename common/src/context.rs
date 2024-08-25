@@ -1,5 +1,6 @@
 use core::cell::RefCell;
 use std::any::{Any, TypeId};
+use std::hash::{BuildHasherDefault, Hasher};
 use std::marker::PhantomData;
 use std::sync::Arc;
 
@@ -12,7 +13,7 @@ thread_local! {
 /// [`Context`]是一個管理線程上下文的結構體
 #[derive(Default, Clone)]
 pub struct Context {
-    entries: HashMap<TypeId, Arc<dyn Any + Sync + Send>>,
+    entries: HashMap<TypeId, Arc<dyn Any + Sync + Send>, BuildHasherDefault<IdHasher>>,
 }
 
 impl Context {
@@ -64,16 +65,13 @@ impl Context {
     }
 
     pub fn try_move_out<T: 'static + Send + Sync>(&mut self) -> Option<T> {
-        self.entries
-            .remove(&TypeId::of::<T>())
-            .and_then(|rc| {
-                // Downcast Arc<dyn Any + Send + Sync> to Arc<T>
-                let arc = rc.downcast::<T>().ok()?;
-                // Unwrap Arc<T> to get the inner T
-                Arc::try_unwrap(arc).ok()
-            })
+        self.entries.remove(&TypeId::of::<T>()).and_then(|rc| {
+            // Downcast Arc<dyn Any + Send + Sync> to Arc<T>
+            let arc = rc.downcast::<T>().ok()?;
+            // Unwrap Arc<T> to get the inner T
+            Arc::try_unwrap(arc).ok()
+        })
     }
-
 }
 
 impl std::fmt::Debug for Context {
@@ -96,6 +94,28 @@ impl Drop for ContextGuard {
         if let Some(previous_cx) = self.previous_cx.take() {
             let _ = CURRENT_CONTEXT.try_with(|current| current.replace(previous_cx));
         }
+    }
+}
+
+/// With TypeIds as keys, there's no need to hash them. They are already hashes
+/// themselves, coming from the compiler. The IdHasher holds the u64 of
+/// the TypeId, and then returns it, instead of doing any bit fiddling.
+#[derive(Clone, Default, Debug)]
+struct IdHasher(u64);
+
+impl Hasher for IdHasher {
+    fn write(&mut self, _: &[u8]) {
+        unreachable!("TypeId calls write_u64");
+    }
+
+    #[inline]
+    fn write_u64(&mut self, id: u64) {
+        self.0 = id;
+    }
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.0
     }
 }
 
