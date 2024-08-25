@@ -1,4 +1,4 @@
-use std::{any::Any, sync::Arc, task::{Context, Poll}};
+use std::{any::{Any, TypeId}, collections::HashMap, sync::Arc, task::{Context, Poll}};
 use pin_project_lite::pin_project;
 use tower::Service;
 
@@ -9,21 +9,20 @@ use crate::{db_manager::Database, with_context::{FutureExt, WithContext}};
 pub struct TestStruct(pub &'static str);
 
 #[derive(Debug,Clone)]
-pub struct TestService<S,D> {
+pub struct TestService<S> {
     inner: S,
-    db_resources: Arc<D>
+    context: crate::context::Context
 }
 
-impl<S,D> TestService<S,D> {
-    fn new(inner: S,db_resources:Arc<D>) -> Self {
-        TestService { inner,db_resources }
+impl<S> TestService<S> {
+    fn new(inner: S,context:crate::context::Context) -> Self {
+        TestService { inner, context }
     }
 }
 
 
-impl<S,Request,D> Service<Request> for TestService<S,D>
+impl<S,Request> Service<Request> for TestService<S>
 where
-    D:Send +Sync+'static,
     S: Service<Request>,
     Request: Send + 'static,
 {
@@ -38,11 +37,9 @@ where
 
     fn call(&mut self, request: Request) -> Self::Future
     {
-        let  cx = crate::context::Context::current().with_value(self.db_resources.clone());
+        let _guard = self.context.clone().attach();
 
-        let _guard = cx.clone().attach();
-
-        let response_future = self.inner.call(request).with_context(cx);
+        let response_future = self.inner.call(request).with_context(self.context.clone());
 
         TestResponse {
             response_future,
@@ -71,22 +68,22 @@ where
 
 
 #[derive(Debug, Clone)]
-pub struct TestLayer<D> {
-    db_resources: Arc<D>,
+pub struct TestLayer {
+    context: crate::context::Context,
 }
 
-impl<D> TestLayer<D> {
-    pub fn new(db_resources:Arc<D>) -> Self {
+impl TestLayer {
+    pub fn new(context:crate::context::Context) -> Self {
         TestLayer {
-            db_resources,
+            context,
         }
     }
 }
 
-impl<S,D> tower::Layer<S> for TestLayer<D> {
-    type Service = TestService<S,D>;
+impl<S> tower::Layer<S> for TestLayer {
+    type Service = TestService<S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        TestService::new(inner,self.db_resources.clone())
+        TestService::new(inner,self.context.clone())
     }
 }

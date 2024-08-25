@@ -62,6 +62,18 @@ impl Context {
             _marker: PhantomData,
         }
     }
+
+    pub fn try_move_out<T: 'static + Send + Sync>(&mut self) -> Option<T> {
+        self.entries
+            .remove(&TypeId::of::<T>())
+            .and_then(|rc| {
+                // Downcast Arc<dyn Any + Send + Sync> to Arc<T>
+                let arc = rc.downcast::<T>().ok()?;
+                // Unwrap Arc<T> to get the inner T
+                Arc::try_unwrap(arc).ok()
+            })
+    }
+
 }
 
 impl std::fmt::Debug for Context {

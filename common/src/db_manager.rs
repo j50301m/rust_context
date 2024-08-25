@@ -3,10 +3,12 @@ use std::{any::Any, sync::Arc};
 use once_cell::sync::{Lazy, OnceCell};
 use tonic::async_trait;
 
+use crate::context::Context;
+
 #[async_trait]
 pub trait Database: Any + Send + Sync {
     type DatabaseConnection;
-    type DatabaseTransaction;
+    type DatabaseTransaction: Any + Send + Sync;
     type DatabaseError;
 
     async fn build() -> Result<Self,Self::DatabaseError> where Self: Sized;
@@ -16,6 +18,26 @@ pub trait Database: Any + Send + Sync {
     async fn rollback_transaction(&self, transaction: Self::DatabaseTransaction) -> Result<(),Self::DatabaseError>;
 
     async fn commit_transaction(&self, transaction: Self::DatabaseTransaction) -> Result<(),Self::DatabaseError>;
+
+    async fn create_transaction_in_context(&self, context: Context) -> Result<crate::context::Context,Self::DatabaseError> {
+        let txn = self.create_transaction().await?;
+        Ok(context.with_value(txn))
+    }
+
+    async fn rollback_transaction_in_context(&self, mut context: Context) -> Result<crate::context::Context,Self::DatabaseError> {
+        if let Some(txn) =context.try_move_out::<Self::DatabaseTransaction>() {
+            self.rollback_transaction(txn).await?;
+        }
+        Ok(context)
+    }
+
+    async fn commit_transaction_in_context(&self, mut context: Context) -> Result<crate::context::Context,Self::DatabaseError> {
+        if let Some(txn) =context.try_move_out::<Self::DatabaseTransaction>() {
+            self.commit_transaction(txn).await?;
+        }
+        Ok(context)
+    }
+
 }
 
 

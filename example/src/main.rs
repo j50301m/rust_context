@@ -1,4 +1,4 @@
-use std::{any::Any, sync::Arc, time::Duration};
+use std::{any::{Any, TypeId}, collections::HashMap, hash::Hash, sync::Arc, time::Duration, vec};
 
 use api::test::test_service_server::TestServiceServer;
 use common::db_manager::Database;
@@ -16,10 +16,13 @@ mod entity;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-    let sea_db = Arc::new(SeaPostgres::build().await?);
+    let sea_db = SeaPostgres::build().await?;
+    let sqlx_db = SqlxPostgres::build().await?;
+    let cx = common::context::Context::current_with_value(sea_db).with_value(sqlx_db);
+
 
     tonic::transport::Server::builder()
-        .layer(common::context_middleware::TestLayer::new(sea_db.clone()))
+        .layer(common::context_middleware::TestLayer::new(cx))
         .add_service(TestServiceServer::new(service::TestService::default()))
         .serve("127.0.0.1:12345".parse().unwrap())
         .await?;
@@ -31,6 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 pub struct SeaPostgres{
     db: Arc<sea_orm::DatabaseConnection>,
 }
+
 #[async_trait]
 impl Database for SeaPostgres {
     type DatabaseConnection = sea_orm::DatabaseConnection;
@@ -76,9 +80,9 @@ impl Database for SeaPostgres {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct SqlxPostgres{
-    db: sqlx::PgPool,
+    db: Arc<sqlx::PgPool>,
 }
 #[async_trait]
 impl Database for SqlxPostgres {
@@ -98,7 +102,7 @@ impl Database for SqlxPostgres {
 
         let db = sqlx::PgPool::connect(&db_url).await?;
 
-        Ok(SqlxPostgres { db })
+        Ok(SqlxPostgres { db:Arc::new(db) })
     }
 
     async fn create_transaction(&self) -> Result<Self::DatabaseTransaction, Self::DatabaseError> {

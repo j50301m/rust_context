@@ -1,9 +1,7 @@
-use std::sync::Arc;
-
 use common::db_manager::Database;
 use common::with_context::FutureExt;
 use kgs_tracing::tracing;
-use sea_orm::{ActiveModelTrait, Set, TryIntoModel};
+use sea_orm::{ActiveModelTrait, DatabaseTransaction, Set, TryIntoModel};
 use tonic::{self, Request, Response};
 use crate::{entity, SeaPostgres};
 
@@ -41,30 +39,44 @@ impl api::test::test_service_server::TestService for TestService {
         &self,
         request: Request<api::test::Message>,
     ) -> Result<Response<api::test::Message>, tonic::Status> {
-        // Get the context
-        let cx = Context::current();
+    // Get the context
+    let cx = Context::current();
+    let db = cx.get::<SeaPostgres>().expect("the DB struct `SeaPostgres` not found");
 
-        // Get the sea_orm database implementation
-        let db = cx.get::<Arc<SeaPostgres>>().expect("the DB struct `SeaPostgres` not found");
-        let txn =  db.create_transaction().await.unwrap();
-        let msg = request.into_inner().msg;
+    // Get the sea_orm database implementation
+    let cx = db.create_transaction_in_context(cx.clone()).await.expect("Failed to create transaction");
 
-        // Insert a new record
-        let entity = entity::hello::ActiveModel {
-            name: Set(msg),
-            ..Default::default()
-        }.save(&txn).await.unwrap().try_into_model().unwrap();
+    // Do Curd operation
+    let msg = request.into_inner().msg;
+    let res = save_msg(msg).with_context(cx.clone()).await.unwrap();
 
-        // Commit the transaction
-        db.commit_transaction(txn).await.unwrap();
+    // Commit the transaction
+    db.commit_transaction_in_context(cx).await.expect("Failed to commit transaction");
 
-        // Return the response
-        Ok(Response::new(api::test::Message {
-            msg: format!("Saved: {}", entity.id),
-        }))
+    // Return the response
+    Ok(Response::new(api::test::Message {
+        msg: format!("Saved: {}", res),
+    }))
+
     }
 }
 
+async fn save_msg(msg: String) -> Result<String, sea_orm::DbErr> {
+    // Get the context
+    let cx = Context::current();
+
+    // Get the sea_orm database implementation
+    let txn: &DatabaseTransaction = cx.get::<DatabaseTransaction>().expect("the DB struct `SeaPostgres` not found");
+
+    // Insert a new record
+    let entity = entity::hello::ActiveModel {
+        name: Set(msg),
+        ..Default::default()
+    }.save(txn).await.unwrap().try_into_model().unwrap();
+
+    // Return the response
+    Ok(format!("Saved: {}", entity.id))
+}
 
 async fn do_something() {
     // Check the context with the value `TestStruct("test")`
