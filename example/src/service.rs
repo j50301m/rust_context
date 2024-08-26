@@ -1,6 +1,6 @@
 use crate::entity;
-use common::{database::Database, db_impl::SeaOrmPostgres};
 use common::with_context::FutureExt;
+use common::{database::Database, db_impl::SeaOrmPostgres};
 use kgs_tracing::tracing;
 use macros::transactional;
 use sea_orm::{ActiveModelTrait, DatabaseTransaction, Set};

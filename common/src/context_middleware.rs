@@ -59,17 +59,17 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct TestLayer {
+pub struct ContextHolder {
     context: Context,
 }
 
-impl TestLayer {
+impl ContextHolder {
     pub fn new(context: Context) -> Self {
-        TestLayer { context }
+        ContextHolder { context }
     }
 }
 
-impl<S> tower::Layer<S> for TestLayer {
+impl<S> tower::Layer<S> for ContextHolder {
     type Service = ContextService<S>;
 
     fn layer(&self, inner: S) -> Self::Service {

@@ -5,7 +5,6 @@ use tonic::async_trait;
 
 use crate::database::Database;
 
-
 #[derive(Debug, Clone)]
 pub struct SeaOrmPostgres {
     db: Arc<sea_orm::DatabaseConnection>,
@@ -154,11 +153,7 @@ impl<'a> SeaPostgresBuilder<'a> {
     pub async fn build(&self) -> SeaOrmPostgres {
         let db_url = format!(
             "postgres://{}:{}@{}:{}/{}",
-            self.db_user,
-            self.db_password,
-            self.db_host,
-            self.db_port,
-            self.db_name
+            self.db_user, self.db_password, self.db_host, self.db_port, self.db_name
         );
 
         let mut opt = ConnectOptions::new(db_url);
@@ -170,11 +165,10 @@ impl<'a> SeaPostgresBuilder<'a> {
             .sqlx_logging(self.sqlx_logging)
             .sqlx_logging_level(self.sqlx_logging_level.into());
 
-        let db = sea_orm::Database::connect(opt).await.expect("connect to db failed");
+        let db = sea_orm::Database::connect(opt)
+            .await
+            .expect("connect to db failed");
 
-        SeaOrmPostgres{
-            db: Arc::new(db),
-        }
+        SeaOrmPostgres { db: Arc::new(db) }
     }
 }
-
