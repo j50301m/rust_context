@@ -1,5 +1,5 @@
-use crate::{entity, SeaPostgres};
-use common::database::Database;
+use crate::entity;
+use common::{database::Database, db_impl::SeaOrmPostgres};
 use common::with_context::FutureExt;
 use kgs_tracing::tracing;
 use macros::transactional;
@@ -58,7 +58,7 @@ async fn save_msg_1(msg: String) -> Result<String, tonic::Status> {
     // Get the sea_orm database implementation
     let txn = {
         let db = cx
-            .get::<SeaPostgres>()
+            .get::<SeaOrmPostgres>()
             .expect("the DB struct `SeaPostgres` not found");
         db.create_transaction()
             .await
@@ -81,7 +81,7 @@ async fn save_msg_1(msg: String) -> Result<String, tonic::Status> {
     let name = update_msg(entity).with_context(cx.clone()).await.unwrap();
 
     // Commit the transaction
-    SeaPostgres::commit_transaction_in_context(cx)
+    SeaOrmPostgres::commit_transaction_in_context(cx)
         .await
         .expect("Failed to commit transaction");
 
@@ -90,7 +90,7 @@ async fn save_msg_1(msg: String) -> Result<String, tonic::Status> {
 }
 
 #[tracing::instrument]
-#[transactional(SeaPostgres)]
+#[transactional(SeaOrmPostgres)]
 async fn save_msg_2(msg: String) -> Result<String, tonic::Status> {
     // Get the context
     let cx = Context::current();

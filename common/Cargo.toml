@@ -11,6 +11,17 @@ futures-core = {workspace = true }
 futures-sink = {workspace = true }
 async-trait = {workspace = true }
 thread_local = {workspace = true }
+
+# For tonic middleware
 tower = {workspace = true }
 futures = {workspace = true }
 once_cell = {workspace = true }
+
+# For db_impl
+sea-orm = {workspace = true}
+log = {workspace = true}
+deadpool-redis = {workspace = true}
+redis = {workspace = true}
+
+
+
