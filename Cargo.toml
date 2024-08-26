@@ -4,10 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = [
-    "common",
-    "example",
-]
+members = ["common","example", "macros"]
 
 [workspace.dependencies]
 protos = { git = "http://gitlab.kgs.asia/rust_lib/protos.git", branch = "feature/payment_rollover" }
@@ -27,3 +24,4 @@ futures = "0.3.30"
 once_cell = "1.19.0"
 
 common = { path = "./common" }
+macros = { path = "./macros" }

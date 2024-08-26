@@ -66,14 +66,12 @@ impl Database for SeaPostgres {
 
     #[tracing::instrument]
     async fn rollback_transaction(
-        &self,
         transaction: Self::DatabaseTransaction,
     ) -> Result<(), Self::DatabaseError> {
         transaction.rollback().await
     }
     #[tracing::instrument]
     async fn commit_transaction(
-        &self,
         transaction: Self::DatabaseTransaction,
     ) -> Result<(), Self::DatabaseError> {
         transaction.commit().await
@@ -106,14 +104,12 @@ impl Database for SqlxPostgres {
     }
 
     async fn rollback_transaction(
-        &self,
         transaction: Self::DatabaseTransaction,
     ) -> Result<(), Self::DatabaseError> {
         transaction.rollback().await
     }
 
     async fn commit_transaction(
-        &self,
         transaction: Self::DatabaseTransaction,
     ) -> Result<(), Self::DatabaseError> {
         transaction.commit().await

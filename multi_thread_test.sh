@@ -7,7 +7,7 @@ SERVICE_ADDRESS="localhost:12345"
 
 # Set test parameters
 TOTAL_REQUESTS=1000
-CONCURRENCY=20
+CONCURRENCY=50
 
 # Create a temporary file for the data template
 TEMP_FILE=$(mktemp)

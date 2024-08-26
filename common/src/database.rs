@@ -17,12 +17,10 @@ pub trait Database: Any + Send + Sync {
     async fn create_transaction(&self) -> Result<Self::DatabaseTransaction, Self::DatabaseError>;
 
     async fn rollback_transaction(
-        &self,
         transaction: Self::DatabaseTransaction,
     ) -> Result<(), Self::DatabaseError>;
 
     async fn commit_transaction(
-        &self,
         transaction: Self::DatabaseTransaction,
     ) -> Result<(), Self::DatabaseError>;
 
@@ -35,21 +33,19 @@ pub trait Database: Any + Send + Sync {
     }
 
     async fn rollback_transaction_in_context(
-        &self,
         mut context: Context,
     ) -> Result<Context, Self::DatabaseError> {
         if let Some(txn) = context.try_move_out::<Self::DatabaseTransaction>() {
-            self.rollback_transaction(txn).await?;
+            Self::rollback_transaction(txn).await?;
         }
         Ok(context)
     }
 
     async fn commit_transaction_in_context(
-        &self,
         mut context: Context,
     ) -> Result<Context, Self::DatabaseError> {
         if let Some(txn) = context.try_move_out::<Self::DatabaseTransaction>() {
-            self.commit_transaction(txn).await?;
+            Self::commit_transaction(txn).await?;
         }
         Ok(context)
     }

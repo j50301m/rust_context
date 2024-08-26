@@ -2,7 +2,8 @@ use crate::{entity, SeaPostgres};
 use common::database::Database;
 use common::with_context::FutureExt;
 use kgs_tracing::tracing;
-use sea_orm::{ActiveModelTrait, DatabaseTransaction, Set, TryIntoModel};
+use macros::transactional;
+use sea_orm::{ActiveModelTrait, DatabaseTransaction, Set};
 use tonic::{self, Request, Response};
 
 #[derive(Debug, Default)]
@@ -39,40 +40,62 @@ impl api::test::test_service_server::TestService for TestService {
         &self,
         request: Request<api::test::Message>,
     ) -> Result<Response<api::test::Message>, tonic::Status> {
-        // Get the context
-        let cx = Context::current();
-        let db = cx
-            .get::<SeaPostgres>()
-            .expect("the DB struct `SeaPostgres` not found");
-
-        // Get the sea_orm database implementation
-        let cx = db
-            .create_transaction_in_context(cx.clone())
+        save_msg_2(request.into_inner().msg)
             .await
-            .expect("Failed to create transaction");
-
-        // Do CRUD operation
-        let msg = request.into_inner().msg;
-        let res = save_msg(msg).with_context(cx.clone()).await.unwrap();
-
-        // Commit the transaction
-        db.commit_transaction_in_context(cx)
-            .await
-            .expect("Failed to commit transaction");
-
-        // Return the response
-        Ok(Response::new(api::test::Message {
-            msg: format!("Saved: {}", res),
-        }))
+            .map(|msg| Response::new(api::test::Message { msg }))
+            .map_err(|e| {
+                tracing::error!("Failed to save message: {:?}", e);
+                tonic::Status::internal("Failed to save message")
+            })
     }
 }
 
 #[tracing::instrument]
-async fn save_msg(msg: String) -> Result<String, sea_orm::DbErr> {
+async fn save_msg_1(msg: String) -> Result<String, tonic::Status> {
     // Get the context
     let cx = Context::current();
 
     // Get the sea_orm database implementation
+    let txn = {
+        let db = cx
+            .get::<SeaPostgres>()
+            .expect("the DB struct `SeaPostgres` not found");
+        db.create_transaction()
+            .await
+            .expect("Failed to create transaction")
+    };
+
+    // Save txn into the context
+    let cx = cx.with_value(txn);
+
+    // Insert a new record
+    let entity = entity::hello::ActiveModel {
+        name: Set(msg),
+        ..Default::default()
+    }
+    .insert(cx.get::<DatabaseTransaction>().unwrap())
+    .await
+    .unwrap();
+
+    // Do other CRUD operations with same transaction
+    let name = update_msg(entity).with_context(cx.clone()).await.unwrap();
+
+    // Commit the transaction
+    SeaPostgres::commit_transaction_in_context(cx)
+        .await
+        .expect("Failed to commit transaction");
+
+    // Return the response
+    Ok(format!("{}", name))
+}
+
+#[tracing::instrument]
+#[transactional(SeaPostgres)]
+async fn save_msg_2(msg: String) -> Result<String, tonic::Status> {
+    // Get the context
+    let cx = Context::current();
+
+    // Create a transaction
     let txn = cx
         .get::<DatabaseTransaction>()
         .expect("the DB struct `SeaPostgres` not found");
@@ -82,14 +105,39 @@ async fn save_msg(msg: String) -> Result<String, sea_orm::DbErr> {
         name: Set(msg),
         ..Default::default()
     }
-    .save(txn)
+    .insert(txn)
     .await
-    .unwrap()
-    .try_into_model()
-    .unwrap();
+    .expect("Failed to insert");
+
+    // Do other CRUD operations with same transaction
+    let name = update_msg(entity).await.expect("Failed to update");
+
+    // Auto commit  when the function is successful
+
+    Ok(format!("{}", name))
+}
+
+#[tracing::instrument]
+async fn update_msg(entity: entity::hello::Model) -> Result<String, sea_orm::DbErr> {
+    // Get the context
+    let cx = Context::current();
+
+    // Get the sea_orm database implementation
+    let txn = cx
+        .get::<DatabaseTransaction>()
+        .expect("the DB struct `SeaPostgres` not found");
+
+    // Insert a new record
+    let active_model = entity::hello::ActiveModel {
+        id: Set(entity.id),
+        name: Set("Updated".to_string()),
+        ..Default::default()
+    };
+
+    let entity = active_model.update(txn).await?;
 
     // Return the response
-    Ok(format!("Saved: {}", entity.id))
+    Ok(format!("Saved: {},  id: {}", entity.name, entity.id))
 }
 
 #[tracing::instrument]
