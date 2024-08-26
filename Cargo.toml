@@ -6,6 +6,11 @@ edition = "2021"
 [workspace]
 members = ["common","example", "macros"]
 
+
+[dependencies]
+common = { path = "./common" }
+macros = { path = "./macros" }
+
 [workspace.dependencies]
 protos = { git = "http://gitlab.kgs.asia/rust_lib/protos.git", branch = "feature/payment_rollover" }
 kgs-tracing = { git = "http://gitlab.kgs.asia/rust_lib/kgs-tracing.git", branch = "master" }

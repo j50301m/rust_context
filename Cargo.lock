@@ -979,6 +979,10 @@ checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
 [[package]]
 name = "context"
 version = "0.1.0"
+dependencies = [
+ "common",
+ "macros",
+]
 
 [[package]]
 name = "convert_case"
@@ -2250,6 +2254,7 @@ dependencies = [
 name = "macros"
 version = "0.1.0"
 dependencies = [
+ "common",
  "proc-macro2",
  "quote",
  "syn 2.0.76",

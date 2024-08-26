@@ -31,8 +31,7 @@ where
     }
 
     fn call(&mut self, request: Request) -> Self::Future {
-        let _guard = self.context.clone().attach();
-
+        // let _guard = self.context.clone().attach();
         let response_future = self.inner.call(request).with_context(self.context.clone());
 
         FutureResponse { response_future }
